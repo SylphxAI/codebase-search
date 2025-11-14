@@ -186,29 +186,62 @@ export const createMockProvider = (dimensions = 1536): EmbeddingProvider => ({
 });
 
 /**
+ * Provider Factory Type
+ */
+type ProviderFactory = (config: EmbeddingConfig) => EmbeddingProvider;
+
+/**
+ * Provider Registry (modular design)
+ */
+const providerRegistry = new Map<string, ProviderFactory>();
+
+/**
+ * Register a provider factory
+ */
+export const registerProvider = (name: string, factory: ProviderFactory): void => {
+  providerRegistry.set(name, factory);
+};
+
+/**
+ * Get registered provider names
+ */
+export const getRegisteredProviders = (): string[] => {
+  return Array.from(providerRegistry.keys());
+};
+
+// Register built-in providers
+registerProvider('openai', (config) => {
+  console.error(`[INFO] Creating OpenAI provider: ${config.model} (${config.dimensions} dims)`);
+  return createOpenAIProvider(config);
+});
+
+registerProvider('openai-compatible', (config) => {
+  console.error(
+    `[INFO] Creating OpenAI-compatible provider: ${config.model} (${config.dimensions} dims)`,
+    config.baseURL ? `at ${config.baseURL}` : ''
+  );
+  return createOpenAIProvider(config);
+});
+
+registerProvider('mock', (config) => {
+  console.error('[INFO] Creating Mock embedding provider');
+  return createMockProvider(config.dimensions);
+});
+
+/**
  * Create Embedding Provider from config (pure function)
+ * Uses provider registry for modularity
  */
 export const createEmbeddingProvider = (config: EmbeddingConfig): EmbeddingProvider => {
-  switch (config.provider) {
-    case 'openai':
-      console.error(`[INFO] Creating OpenAI provider: ${config.model} (${config.dimensions} dims)`);
-      return createOpenAIProvider(config);
+  const factory = providerRegistry.get(config.provider);
 
-    case 'openai-compatible':
-      console.error(
-        `[INFO] Creating OpenAI-compatible provider: ${config.model} (${config.dimensions} dims)`,
-        config.baseURL ? `at ${config.baseURL}` : ''
-      );
-      return createOpenAIProvider(config);
-
-    case 'mock':
-      console.error('[INFO] Creating Mock embedding provider');
-      return createMockProvider(config.dimensions);
-
-    default:
-      console.error('[WARN] Unknown provider, using mock');
-      return createMockProvider(config.dimensions);
+  if (!factory) {
+    console.error(`[WARN] Unknown provider '${config.provider}', using mock`);
+    const mockFactory = providerRegistry.get('mock');
+    return mockFactory!(config);
   }
+
+  return factory(config);
 };
 
 /**
