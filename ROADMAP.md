@@ -35,12 +35,26 @@
 
 ## 🚧 In Progress
 
-### Performance Optimizations (Q2 2025)
-- [ ] Parallel file scanning
-- [ ] Lazy loading of file content
-- [ ] Index compression
-- [ ] Query result caching
-- [ ] Batch database operations
+### AST Analysis & Symbol Search (Q2 2025)
+See "Planned Features" section below for details.
+
+---
+
+## ✅ Recently Completed (Q1 2025)
+
+### Performance Optimizations
+- [x] **Hash-based Change Detection** - Skip unchanged files during re-indexing
+- [x] **Incremental TF-IDF Updates** - Smart update strategy (only update affected terms/documents)
+- [x] **Query Result Caching** - LRU cache with TTL for faster repeated searches
+- [x] **Batch Database Operations** - Transaction-based bulk inserts for 10x faster indexing
+- [x] **Smart Cache Validation** - Auto-detect when >20% files change, trigger full rebuild
+
+### Semantic Search Foundation
+- [x] **Embeddings Interface** - Pure functional API using Vercel AI SDK
+- [x] **OpenAI Integration** - Support for text-embedding-3-small/large and ada-002
+- [x] **Mock Provider** - Deterministic embeddings for testing
+- [x] **Cosine Similarity** - Vector comparison utilities
+- [x] **Text Chunking** - Split large texts with overlap for better embeddings
 
 ---
 

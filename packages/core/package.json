@@ -43,9 +43,13 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^1.0.11",
+    "@huggingface/transformers": "^3.7.6",
+    "ai": "^4.0.35",
     "better-sqlite3": "^11.8.1",
     "chokidar": "^4.0.3",
     "drizzle-orm": "^0.36.4",
+    "hnswlib-node": "^3.0.0",
     "ignore": "^7.0.5"
   },
   "devDependencies": {

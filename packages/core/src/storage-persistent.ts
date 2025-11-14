@@ -50,6 +50,57 @@ export class PersistentStorage implements Storage {
   }
 
   /**
+   * Store multiple files in a single transaction (batch operation)
+   * Much faster than storing one by one for large datasets
+   */
+  async storeFiles(files: CodebaseFile[]): Promise<void> {
+    if (files.length === 0) {
+      return;
+    }
+
+    const { db, sqlite } = this.dbInstance;
+
+    // Use SQLite transaction for atomic batch insert
+    sqlite.exec('BEGIN TRANSACTION');
+
+    try {
+      // Process files one by one within transaction (still much faster than separate transactions)
+      for (const file of files) {
+        const mtime = typeof file.mtime === 'number' ? file.mtime : file.mtime.getTime();
+        const values = {
+          path: file.path,
+          content: file.content,
+          hash: file.hash,
+          size: file.size,
+          mtime,
+          ...(file.language ? { language: file.language } : {}),
+          indexedAt: Date.now(),
+        };
+
+        await db
+          .insert(schema.files)
+          .values(values)
+          .onConflictDoUpdate({
+            target: schema.files.path,
+            set: {
+              content: values.content,
+              hash: values.hash,
+              size: values.size,
+              mtime: values.mtime,
+              ...(values.language ? { language: values.language } : {}),
+              indexedAt: values.indexedAt,
+            },
+          });
+      }
+
+      sqlite.exec('COMMIT');
+    } catch (error) {
+      sqlite.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  /**
    * Get a file by path
    */
   async getFile(path: string): Promise<CodebaseFile | null> {
@@ -165,6 +216,99 @@ export class PersistentStorage implements Storage {
 
     if (vectors.length > 0) {
       await db.insert(schema.documentVectors).values(vectors);
+    }
+  }
+
+  /**
+   * Store document vectors for multiple files in a single transaction (batch operation)
+   * Much faster than storing one by one for large datasets
+   */
+  async storeManyDocumentVectors(
+    documents: Array<{
+      filePath: string;
+      terms: Map<string, { tf: number; tfidf: number; rawFreq: number }>;
+    }>
+  ): Promise<void> {
+    if (documents.length === 0) {
+      return;
+    }
+
+    const { db, sqlite } = this.dbInstance;
+
+    // Use SQLite transaction for atomic batch insert
+    sqlite.exec('BEGIN TRANSACTION');
+
+    try {
+      // First, get all file IDs in one query
+      const filePaths = documents.map((doc) => doc.filePath);
+      const files = await db.select().from(schema.files).all();
+
+      const fileIdMap = new Map<string, number>();
+      for (const file of files) {
+        fileIdMap.set(file.path, file.id);
+      }
+
+      // Delete all existing vectors for these files
+      const fileIds = documents
+        .map((doc) => fileIdMap.get(doc.filePath))
+        .filter((id): id is number => id !== undefined);
+
+      if (fileIds.length > 0) {
+        // Delete in chunks to avoid SQLite variable limits
+        const deleteChunkSize = 500;
+        for (let i = 0; i < fileIds.length; i += deleteChunkSize) {
+          const chunk = fileIds.slice(i, i + deleteChunkSize);
+          await db
+            .delete(schema.documentVectors)
+            .where(
+              sql`${schema.documentVectors.fileId} IN (${sql.join(
+                chunk.map((id) => sql`${id}`),
+                sql`, `
+              )})`
+            );
+        }
+      }
+
+      // Prepare all vectors for batch insert
+      const allVectors: Array<{
+        fileId: number;
+        term: string;
+        tf: number;
+        tfidf: number;
+        rawFreq: number;
+      }> = [];
+
+      for (const doc of documents) {
+        const fileId = fileIdMap.get(doc.filePath);
+        if (!fileId) {
+          console.error(`[WARN] File not found in database: ${doc.filePath}`);
+          continue;
+        }
+
+        for (const [term, scores] of doc.terms.entries()) {
+          allVectors.push({
+            fileId,
+            term,
+            tf: scores.tf,
+            tfidf: scores.tfidf,
+            rawFreq: scores.rawFreq,
+          });
+        }
+      }
+
+      // Insert in chunks to avoid SQLite variable limits
+      const chunkSize = 500;
+      for (let i = 0; i < allVectors.length; i += chunkSize) {
+        const chunk = allVectors.slice(i, i + chunkSize);
+        if (chunk.length > 0) {
+          await db.insert(schema.documentVectors).values(chunk);
+        }
+      }
+
+      sqlite.exec('COMMIT');
+    } catch (error) {
+      sqlite.exec('ROLLBACK');
+      throw error;
     }
   }
 

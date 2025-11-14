@@ -17,11 +17,12 @@ describe('TF-IDF', () => {
       const text = 'function getUserData() { return user.data; }';
       const tokens = tokenize(text);
 
-      // Function appears 3 times (keyword boost)
-      expect(tokens.filter((t) => t === 'function')).toHaveLength(3);
+      expect(tokens).toContain('function');
       expect(tokens).toContain('getuserdata');
-      expect(tokens).toContain('data');
+      expect(tokens).toContain('get');
       expect(tokens).toContain('user');
+      expect(tokens).toContain('data');
+      expect(tokens).toContain('return');
     });
 
     it('should split camelCase identifiers', () => {
@@ -62,13 +63,12 @@ describe('TF-IDF', () => {
       expect(tokens).not.toContain('GetUser');
     });
 
-    it('should boost keywords', () => {
+    it('should handle keywords', () => {
       const text = 'function test';
       const tokens = tokenize(text);
 
-      // Function appears 3 times (1 original + 2 boost)
-      const functionCount = tokens.filter((t) => t === 'function').length;
-      expect(functionCount).toBe(3);
+      expect(tokens).toContain('function');
+      expect(tokens).toContain('test');
     });
 
     it('should handle empty input', () => {

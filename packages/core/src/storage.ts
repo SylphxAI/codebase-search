@@ -13,6 +13,7 @@ export interface CodebaseFile {
 
 export interface Storage {
   storeFile(file: CodebaseFile): Promise<void>;
+  storeFiles?(files: CodebaseFile[]): Promise<void>; // Optional batch operation
   getFile(path: string): Promise<CodebaseFile | null>;
   getAllFiles(): Promise<CodebaseFile[]>;
   deleteFile(path: string): Promise<void>;
@@ -29,6 +30,15 @@ export class MemoryStorage implements Storage {
    */
   async storeFile(file: CodebaseFile): Promise<void> {
     this.files.set(file.path, file);
+  }
+
+  /**
+   * Store multiple files (batch operation)
+   */
+  async storeFiles(files: CodebaseFile[]): Promise<void> {
+    for (const file of files) {
+      this.files.set(file.path, file);
+    }
   }
 
   /**

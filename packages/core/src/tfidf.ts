@@ -3,6 +3,8 @@
  * Simplified version for codebase search
  */
 
+import { simpleCodeTokenize } from './code-tokenizer.js';
+
 export interface DocumentVector {
   uri: string;
   terms: Map<string, number>; // term → TF-IDF score
@@ -21,64 +23,11 @@ export interface SearchIndex {
 }
 
 /**
- * Simple code-aware tokenizer
- * Extracts identifiers, keywords, and meaningful terms from code
+ * Code-aware tokenizer using StarCoder2 approach
+ * Handles camelCase, snake_case, identifiers, and string contents
  */
 export function tokenize(text: string): string[] {
-  // Common code keywords to boost
-  const keywords = new Set([
-    'function',
-    'const',
-    'let',
-    'var',
-    'class',
-    'interface',
-    'type',
-    'async',
-    'await',
-    'return',
-    'import',
-    'export',
-    'from',
-    'if',
-    'else',
-    'for',
-    'while',
-    'switch',
-    'case',
-  ]);
-
-  const tokens: string[] = [];
-
-  // Extract identifiers (camelCase, snake_case, PascalCase)
-  const identifierPattern = /[a-zA-Z_][a-zA-Z0-9_]*/g;
-  const matches = text.match(identifierPattern) || [];
-
-  for (const match of matches) {
-    const lower = match.toLowerCase();
-
-    // Add the token
-    tokens.push(lower);
-
-    // Boost keywords by adding them multiple times
-    if (keywords.has(lower)) {
-      tokens.push(lower, lower);
-    }
-
-    // Split camelCase into parts
-    const parts = match.split(/(?=[A-Z])/).filter((p) => p.length > 1);
-    if (parts.length > 1) {
-      tokens.push(...parts.map((p) => p.toLowerCase()));
-    }
-
-    // Split snake_case into parts
-    if (match.includes('_')) {
-      const underscoreParts = match.split('_').filter((p) => p.length > 1);
-      tokens.push(...underscoreParts.map((p) => p.toLowerCase()));
-    }
-  }
-
-  return tokens;
+  return simpleCodeTokenize(text);
 }
 
 /**

@@ -16,6 +16,10 @@ import {
 import { MemoryStorage, type CodebaseFile, type Storage } from './storage.js';
 import { PersistentStorage } from './storage-persistent.js';
 import { buildSearchIndex, type SearchIndex } from './tfidf.js';
+import { IncrementalTFIDF, type IncrementalUpdate } from './incremental-tfidf.js';
+import { LRUCache, createCacheKey } from './search-cache.js';
+import { VectorStorage, type VectorDocument } from './vector-storage.js';
+import type { EmbeddingProvider } from './embeddings.js';
 
 export interface IndexerOptions {
   codebaseRoot?: string;
@@ -24,6 +28,8 @@ export interface IndexerOptions {
   onProgress?: (current: number, total: number, file: string) => void;
   watch?: boolean;
   onFileChange?: (event: FileChangeEvent) => void;
+  embeddingProvider?: EmbeddingProvider;
+  vectorBatchSize?: number; // Default: 10
 }
 
 export interface FileChangeEvent {
@@ -45,6 +51,9 @@ export class CodebaseIndexer {
   private maxFileSize: number;
   private storage: Storage;
   private searchIndex: SearchIndex | null = null;
+  private incrementalEngine: IncrementalTFIDF | null = null;
+  private pendingFileChanges: IncrementalUpdate[] = [];
+  private searchCache: LRUCache<SearchResult[]>;
   private watcher: any = null;
   private isWatching = false;
   private onFileChangeCallback?: (event: FileChangeEvent) => void;
@@ -56,12 +65,31 @@ export class CodebaseIndexer {
     totalFiles: 0,
     indexedFiles: 0,
   };
+  private vectorStorage?: VectorStorage;
+  private embeddingProvider?: EmbeddingProvider;
+  private vectorBatchSize: number;
 
   constructor(options: IndexerOptions = {}) {
     this.codebaseRoot = options.codebaseRoot || process.cwd();
     this.maxFileSize = options.maxFileSize || 1048576; // 1MB
     this.storage = options.storage || new MemoryStorage();
     this.onFileChangeCallback = options.onFileChange;
+    this.searchCache = new LRUCache<SearchResult[]>(100, 5); // 100 entries, 5 min TTL
+    this.embeddingProvider = options.embeddingProvider;
+    this.vectorBatchSize = options.vectorBatchSize || 10;
+
+    // Initialize vector storage if embedding provider is available
+    if (this.embeddingProvider) {
+      const vectorPath = path.join(this.codebaseRoot, '.codebase-search', 'vectors.hnsw');
+
+      this.vectorStorage = new VectorStorage({
+        dimensions: this.embeddingProvider.dimensions,
+        indexPath: vectorPath,
+      });
+      console.error(
+        `[INFO] Vector storage initialized: ${this.embeddingProvider.dimensions} dimensions`
+      );
+    }
   }
 
   /**
@@ -129,16 +157,14 @@ export class CodebaseIndexer {
       this.status.totalFiles = scannedFiles.length;
       console.error(`[INFO] Found ${scannedFiles.length} files`);
 
-      // Store files in memory
-      for (let i = 0; i < scannedFiles.length; i++) {
-        const file = scannedFiles[i];
+      // Prepare all files for storage
+      const codebaseFiles: CodebaseFile[] = scannedFiles.map((file, i) => {
         this.status.currentFile = file.path;
         this.status.indexedFiles = i + 1;
         this.status.progress = Math.round(((i + 1) / scannedFiles.length) * 50); // 0-50% for file scanning
-
         options.onProgress?.(i + 1, scannedFiles.length, file.path);
 
-        const codebaseFile: CodebaseFile = {
+        return {
           path: file.path,
           content: file.content,
           size: file.size,
@@ -146,8 +172,17 @@ export class CodebaseIndexer {
           language: file.language,
           hash: simpleHash(file.content),
         };
+      });
 
-        await this.storage.storeFile(codebaseFile);
+      // Use batch operation if available (much faster for large datasets)
+      if (this.storage.storeFiles) {
+        console.error('[INFO] Using batch storage operation');
+        await this.storage.storeFiles(codebaseFiles);
+      } else {
+        // Fallback to one-by-one storage
+        for (const file of codebaseFiles) {
+          await this.storage.storeFile(file);
+        }
       }
 
       // Build search index
@@ -160,11 +195,23 @@ export class CodebaseIndexer {
       this.searchIndex = buildSearchIndex(documents);
       this.status.progress = 75;
 
+      // Initialize incremental engine for future updates
+      this.incrementalEngine = new IncrementalTFIDF(
+        this.searchIndex.documents,
+        this.searchIndex.idf
+      );
+      console.error('[INFO] Incremental update engine initialized');
+
       // Persist TF-IDF vectors if using persistent storage
       if (this.storage instanceof PersistentStorage) {
         console.error('[INFO] Persisting TF-IDF vectors...');
         await this.persistSearchIndex();
         console.error('[SUCCESS] TF-IDF vectors persisted');
+      }
+
+      // Build vector index if embedding provider available
+      if (this.embeddingProvider && this.vectorStorage) {
+        await this.buildVectorIndex(scannedFiles);
       }
 
       this.status.progress = 100;
@@ -287,8 +334,25 @@ export class CodebaseIndexer {
 
     try {
       if (type === 'unlink') {
-        // Remove from storage and rebuild index
+        // Track deletion for incremental update
+        const existingFile = await this.storage.getFile(relativePath);
+        if (existingFile && this.searchIndex) {
+          const oldDoc = this.searchIndex.documents.find(
+            (d) => d.uri === `file://${relativePath}`
+          );
+          if (oldDoc) {
+            this.pendingFileChanges.push({
+              type: 'delete',
+              uri: `file://${relativePath}`,
+              oldDocument: oldDoc,
+            });
+          }
+        }
+
+        // Remove from storage
         await this.storage.deleteFile(relativePath);
+        // Remove from vector storage
+        await this.deleteFileVector(relativePath);
         console.error(`[FILE] Removed: ${relativePath}`);
       } else {
         // Check if file is text and within size limit
@@ -303,18 +367,55 @@ export class CodebaseIndexer {
           return;
         }
 
-        // Read and index file
+        // Read file content
         const content = await fs.readFile(absolutePath, 'utf-8');
+        const hash = simpleHash(content);
+
+        // OPTIMIZATION: Check if file actually changed using hash comparison
+        const existingFile = await this.storage.getFile(relativePath);
+        if (existingFile && existingFile.hash === hash) {
+          console.error(`[FILE] Skipped (unchanged): ${relativePath}`);
+          // File hasn't changed, skip indexing
+          this.onFileChangeCallback?.(event);
+          return;
+        }
+
+        // Track change for incremental update
+        if (this.searchIndex) {
+          const uri = `file://${relativePath}`;
+          const oldDoc = this.searchIndex.documents.find((d) => d.uri === uri);
+
+          if (oldDoc) {
+            // Update existing document
+            this.pendingFileChanges.push({
+              type: 'update',
+              uri,
+              oldDocument: oldDoc,
+              newContent: content,
+            });
+          } else {
+            // Add new document
+            this.pendingFileChanges.push({
+              type: 'add',
+              uri,
+              newContent: content,
+            });
+          }
+        }
+
+        // File changed or new, process it
         const codebaseFile: CodebaseFile = {
           path: relativePath,
           content,
           size: stats.size,
           mtime: stats.mtime,
           language: detectLanguage(relativePath),
-          hash: simpleHash(content),
+          hash,
         };
 
         await this.storage.storeFile(codebaseFile);
+        // Update vector storage
+        await this.updateFileVector(relativePath, content);
         console.error(`[FILE] ${type === 'add' ? 'Added' : 'Updated'}: ${relativePath}`);
       }
 
@@ -330,8 +431,58 @@ export class CodebaseIndexer {
 
   /**
    * Rebuild search index from current storage
+   * Uses incremental update when possible for performance
    */
   private async rebuildSearchIndex(): Promise<void> {
+    // If no incremental engine or no pending changes, do full rebuild
+    if (!this.incrementalEngine || this.pendingFileChanges.length === 0) {
+      return this.fullRebuildSearchIndex();
+    }
+
+    // Check if incremental update is recommended
+    if (this.incrementalEngine.shouldFullRebuild(this.pendingFileChanges)) {
+      console.error(
+        '[INFO] Changes too extensive, performing full rebuild instead of incremental'
+      );
+      this.pendingFileChanges = [];
+      return this.fullRebuildSearchIndex();
+    }
+
+    // Perform incremental update
+    const startTime = Date.now();
+    const stats = await this.incrementalEngine.applyUpdates(this.pendingFileChanges);
+    this.pendingFileChanges = [];
+
+    // Update search index from incremental engine
+    const indexData = this.incrementalEngine.getIndex();
+    this.searchIndex = {
+      documents: indexData.documents,
+      idf: indexData.idf,
+      totalDocuments: indexData.totalDocuments,
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        version: '1.0.0',
+      },
+    };
+
+    console.error(
+      `[SUCCESS] Incremental update: ${stats.affectedDocuments} docs, ${stats.affectedTerms} terms, ${stats.updateTime}ms`
+    );
+
+    // Invalidate search cache (index changed)
+    this.searchCache.invalidate();
+    console.error('[INFO] Search cache invalidated');
+
+    // Persist if using persistent storage
+    if (this.storage instanceof PersistentStorage) {
+      await this.persistSearchIndex();
+    }
+  }
+
+  /**
+   * Full rebuild of search index (fallback when incremental not possible)
+   */
+  private async fullRebuildSearchIndex(): Promise<void> {
     const allFiles = await this.storage.getAllFiles();
     const documents = allFiles.map((file) => ({
       uri: `file://${file.path}`,
@@ -339,6 +490,16 @@ export class CodebaseIndexer {
     }));
 
     this.searchIndex = buildSearchIndex(documents);
+
+    // Reinitialize incremental engine
+    this.incrementalEngine = new IncrementalTFIDF(
+      this.searchIndex.documents,
+      this.searchIndex.idf
+    );
+
+    // Invalidate search cache (index changed)
+    this.searchCache.invalidate();
+    console.error('[INFO] Search cache invalidated');
 
     // Persist if using persistent storage
     if (this.storage instanceof PersistentStorage) {
@@ -364,18 +525,11 @@ export class CodebaseIndexer {
     }
     await this.storage.storeIdfScores(this.searchIndex.idf, docFreq);
 
-    // Store document vectors for each file
-    for (const doc of this.searchIndex.documents) {
-      // Extract file path from URI (remove 'file://' prefix)
+    // Prepare document vectors for batch storage
+    const documentsToStore = this.searchIndex.documents.map((doc) => {
       const filePath = doc.uri.replace(/^file:\/\//, '');
+      const totalTerms = Array.from(doc.rawTerms.values()).reduce((sum, freq) => sum + freq, 0);
 
-      // Calculate TF for each term
-      const totalTerms = Array.from(doc.rawTerms.values()).reduce(
-        (sum, freq) => sum + freq,
-        0
-      );
-
-      // Build terms map with tf, tfidf, and rawFreq
       const terms = new Map<string, { tf: number; tfidf: number; rawFreq: number }>();
       for (const [term, tfidfScore] of doc.terms.entries()) {
         const rawFreq = doc.rawTerms.get(term) || 0;
@@ -387,7 +541,19 @@ export class CodebaseIndexer {
         });
       }
 
-      await this.storage.storeDocumentVectors(filePath, terms);
+      return { filePath, terms };
+    });
+
+    // Use batch operation (PersistentStorage specific)
+    const persistentStorage = this.storage as PersistentStorage;
+    if (persistentStorage.storeManyDocumentVectors) {
+      console.error('[INFO] Using batch vector storage operation');
+      await persistentStorage.storeManyDocumentVectors(documentsToStore);
+    } else {
+      // Fallback to one-by-one storage
+      for (const { filePath, terms } of documentsToStore) {
+        await persistentStorage.storeDocumentVectors(filePath, terms);
+      }
     }
   }
 
@@ -461,6 +627,13 @@ export class CodebaseIndexer {
         },
       };
 
+      // Initialize incremental engine for future updates
+      this.incrementalEngine = new IncrementalTFIDF(
+        this.searchIndex.documents,
+        this.searchIndex.idf
+      );
+      console.error('[INFO] Incremental update engine initialized from database');
+
       return true;
     } catch (error) {
       console.error('[ERROR] Failed to load search index from storage:', error);
@@ -493,6 +666,23 @@ export class CodebaseIndexer {
     }
 
     const { limit = 10, includeContent = true } = options;
+
+    // Create cache key from query and options
+    const cacheKey = createCacheKey(query, {
+      limit,
+      fileExtensions: options.fileExtensions,
+      pathFilter: options.pathFilter,
+      excludePaths: options.excludePaths,
+    });
+
+    // Check cache first
+    const cachedResults = this.searchCache.get(cacheKey);
+    if (cachedResults) {
+      console.error(`[CACHE HIT] Query: "${query}"`);
+      return cachedResults;
+    }
+
+    console.error(`[CACHE MISS] Query: "${query}"`);
 
     // Search using TF-IDF
     const results = await import('./tfidf.js').then((m) =>
@@ -540,7 +730,12 @@ export class CodebaseIndexer {
       searchResults.push(searchResult);
     }
 
-    return searchResults.slice(0, limit);
+    const finalResults = searchResults.slice(0, limit);
+
+    // Store in cache
+    this.searchCache.set(cacheKey, finalResults);
+
+    return finalResults;
   }
 
   /**
@@ -583,6 +778,123 @@ export class CodebaseIndexer {
    */
   async getIndexedCount(): Promise<number> {
     return this.storage.count();
+  }
+
+  /**
+   * Get vector storage (for hybrid search)
+   */
+  getVectorStorage(): VectorStorage | undefined {
+    return this.vectorStorage;
+  }
+
+  /**
+   * Get embedding provider (for hybrid search)
+   */
+  getEmbeddingProvider(): EmbeddingProvider | undefined {
+    return this.embeddingProvider;
+  }
+
+  /**
+   * Build vector index from scanned files
+   */
+  private async buildVectorIndex(files: ScanResult[]): Promise<void> {
+    if (!this.embeddingProvider || !this.vectorStorage) {
+      return;
+    }
+
+    console.error('[INFO] Generating embeddings for vector search...');
+    const startTime = Date.now();
+
+    const batchSize = this.vectorBatchSize;
+    let processed = 0;
+
+    for (let i = 0; i < files.length; i += batchSize) {
+      const batch = files.slice(i, i + batchSize);
+      const contents = batch.map((f) => f.content);
+
+      try {
+        // Generate embeddings for batch
+        const embeddings = await this.embeddingProvider.generateEmbeddings(contents);
+
+        // Add to vector storage
+        for (let j = 0; j < batch.length; j++) {
+          const file = batch[j];
+          const embedding = embeddings[j];
+
+          const doc: VectorDocument = {
+            id: `file://${file.path}`,
+            embedding,
+            metadata: {
+              type: 'code',
+              language: file.language,
+              content: file.content.substring(0, 500), // Preview
+              path: file.path,
+            },
+          };
+
+          this.vectorStorage.addDocument(doc);
+        }
+
+        processed += batch.length;
+        console.error(`[INFO] Generated embeddings: ${processed}/${files.length} files`);
+      } catch (error) {
+        console.error(`[ERROR] Failed to generate embeddings for batch ${i}:`, error);
+        // Continue with next batch
+      }
+    }
+
+    // Save vector index
+    this.vectorStorage.save();
+    const elapsedTime = Date.now() - startTime;
+    console.error(
+      `[SUCCESS] Vector index built and saved (${processed} files, ${elapsedTime}ms)`
+    );
+  }
+
+  /**
+   * Update vector for a single file
+   */
+  private async updateFileVector(filePath: string, content: string): Promise<void> {
+    if (!this.embeddingProvider || !this.vectorStorage) {
+      return;
+    }
+
+    try {
+      const embedding = await this.embeddingProvider.generateEmbedding(content);
+      const language = detectLanguage(filePath);
+
+      const doc: VectorDocument = {
+        id: `file://${filePath}`,
+        embedding,
+        metadata: {
+          type: 'code',
+          language,
+          content: content.substring(0, 500),
+          path: filePath,
+        },
+      };
+
+      this.vectorStorage.updateDocument(doc);
+      this.vectorStorage.save();
+      console.error(`[VECTOR] Updated: ${filePath}`);
+    } catch (error) {
+      console.error(`[ERROR] Failed to update vector for ${filePath}:`, error);
+    }
+  }
+
+  /**
+   * Delete vector for a file
+   */
+  private async deleteFileVector(filePath: string): Promise<void> {
+    if (!this.vectorStorage) {
+      return;
+    }
+
+    const deleted = this.vectorStorage.deleteDocument(`file://${filePath}`);
+    if (deleted) {
+      this.vectorStorage.save();
+      console.error(`[VECTOR] Deleted: ${filePath}`);
+    }
   }
 }
 
