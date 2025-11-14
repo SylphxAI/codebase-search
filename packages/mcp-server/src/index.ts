@@ -6,7 +6,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CodebaseIndexer } from '@sylphx/codebase-search-core';
+import { CodebaseIndexer } from '@sylphx/codebase-search';
 import { registerCodebaseSearchTool } from './tool.js';
 
 // Logger utility (stderr for MCP)

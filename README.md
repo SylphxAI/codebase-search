@@ -6,12 +6,12 @@ Intelligent codebase search using TF-IDF - Core library and MCP server.
 
 This monorepo contains two packages:
 
-### [@sylphx/codebase-search-core](./packages/core)
+### [@sylphx/codebase-search](./packages/core)
 
 Core library for intelligent codebase search. Use this if you want to integrate codebase search directly into your application.
 
 ```bash
-npm install @sylphx/codebase-search-core
+npm install @sylphx/codebase-search
 ```
 
 **Features:**
@@ -23,7 +23,7 @@ npm install @sylphx/codebase-search-core
 
 **Usage:**
 ```typescript
-import { CodebaseIndexer } from '@sylphx/codebase-search-core';
+import { CodebaseIndexer } from '@sylphx/codebase-search';
 
 const indexer = new CodebaseIndexer({
   codebaseRoot: '/path/to/project',
@@ -69,10 +69,10 @@ npm install -g @sylphx/codebase-search-mcp
 
 ```bash
 # Install core library
-npm install @sylphx/codebase-search-core
+npm install @sylphx/codebase-search
 
 # Or use in your project
-import { CodebaseIndexer } from '@sylphx/codebase-search-core';
+import { CodebaseIndexer } from '@sylphx/codebase-search';
 ```
 
 ### For MCP Users
@@ -173,7 +173,7 @@ Packages are linked using `workspace:*` protocol, allowing local development wit
 
 ```typescript
 // Direct integration in your app
-import { CodebaseIndexer, searchDocuments } from '@sylphx/codebase-search-core';
+import { CodebaseIndexer, searchDocuments } from '@sylphx/codebase-search';
 
 const indexer = new CodebaseIndexer({ codebaseRoot: './src' });
 await indexer.index();
@@ -190,7 +190,7 @@ Configure in Claude Desktop to enable codebase search directly in your AI conver
 
 ```typescript
 // Use individual components
-import { buildSearchIndex, searchDocuments } from '@sylphx/codebase-search-core';
+import { buildSearchIndex, searchDocuments } from '@sylphx/codebase-search';
 
 const index = buildSearchIndex(documents);
 const results = searchDocuments('query', index);

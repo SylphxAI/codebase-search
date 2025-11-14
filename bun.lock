@@ -10,7 +10,7 @@
       },
     },
     "packages/core": {
-      "name": "@sylphx/codebase-search-core",
+      "name": "@sylphx/codebase-search",
       "version": "1.0.0",
       "dependencies": {
         "ignore": "^7.0.5",
@@ -29,7 +29,7 @@
       },
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.20.2",
-        "@sylphx/codebase-search-core": "workspace:*",
+        "@sylphx/codebase-search": "workspace:*",
         "zod": "^4.1.12",
       },
       "devDependencies": {
@@ -142,7 +142,7 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.0.0", "", {}, "sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA=="],
 
-    "@sylphx/codebase-search-core": ["@sylphx/codebase-search-core@workspace:packages/core"],
+    "@sylphx/codebase-search": ["@sylphx/codebase-search@workspace:packages/core"],
 
     "@sylphx/codebase-search-mcp": ["@sylphx/codebase-search-mcp@workspace:packages/mcp-server"],
 
