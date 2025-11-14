@@ -1,0 +1,38 @@
+{
+  "name": "codebase-search",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Intelligent codebase search with TF-IDF - Core library and MCP server",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "type-check": "turbo run type-check"
+  },
+  "devDependencies": {
+    "turbo": "^2.6.0",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "bun@1.3.2",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "codebase-search",
+    "tfidf",
+    "search",
+    "indexing",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "author": "SylphxAI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SylphxAI/codebase-search.git"
+  }
+}
