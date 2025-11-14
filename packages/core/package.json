@@ -1,6 +1,6 @@
 {
   "name": "@sylphx/coderag",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Lightning-fast hybrid code search (TF-IDF + Vector) - RAG-ready for AI assistants",
   "type": "module",
   "main": "./dist/index.js",
