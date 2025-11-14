@@ -83,11 +83,13 @@ export function isTextFile(filePath: string): boolean {
   const basename = path.basename(filePath).toLowerCase();
 
   // Check extension or common config files without extensions
-  return textExtensions.has(ext) ||
+  return (
+    textExtensions.has(ext) ||
     basename === 'dockerfile' ||
     basename === 'makefile' ||
     basename === '.gitignore' ||
-    basename.startsWith('.env');
+    basename.startsWith('.env')
+  );
 }
 
 /**

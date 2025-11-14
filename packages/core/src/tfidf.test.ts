@@ -12,7 +12,7 @@ describe('TF-IDF', () => {
       const tokens = tokenize(text);
 
       // Function appears 3 times (keyword boost)
-      expect(tokens.filter(t => t === 'function')).toHaveLength(3);
+      expect(tokens.filter((t) => t === 'function')).toHaveLength(3);
       expect(tokens).toContain('getuserdata');
       expect(tokens).toContain('data');
       expect(tokens).toContain('user');
@@ -61,7 +61,7 @@ describe('TF-IDF', () => {
       const tokens = tokenize(text);
 
       // Function appears 3 times (1 original + 2 boost)
-      const functionCount = tokens.filter(t => t === 'function').length;
+      const functionCount = tokens.filter((t) => t === 'function').length;
       expect(functionCount).toBe(3);
     });
 
@@ -88,7 +88,10 @@ describe('TF-IDF', () => {
     it('should build index for multiple documents', () => {
       const documents = [
         { uri: 'file://user.ts', content: 'class User { getData() { return this.data; } }' },
-        { uri: 'file://auth.ts', content: 'function authenticate(user, password) { return true; }' },
+        {
+          uri: 'file://auth.ts',
+          content: 'function authenticate(user, password) { return true; }',
+        },
       ];
 
       const index = buildSearchIndex(documents);
@@ -129,8 +132,14 @@ describe('TF-IDF', () => {
   describe('searchDocuments', () => {
     const testIndex = buildSearchIndex([
       { uri: 'file://user.ts', content: 'class User { getName() { return this.name; } }' },
-      { uri: 'file://auth.ts', content: 'function authenticateUser(username, password) { return true; }' },
-      { uri: 'file://admin.ts', content: 'class Admin extends User { getPermissions() { return []; } }' },
+      {
+        uri: 'file://auth.ts',
+        content: 'function authenticateUser(username, password) { return true; }',
+      },
+      {
+        uri: 'file://admin.ts',
+        content: 'class Admin extends User { getPermissions() { return []; } }',
+      },
     ]);
 
     it('should find relevant documents', () => {
@@ -180,7 +189,7 @@ describe('TF-IDF', () => {
 
       // May return documents with 0 score
       // Filter for documents with score > 0
-      const relevantResults = results.filter(r => r.score > 0);
+      const relevantResults = results.filter((r) => r.score > 0);
       expect(relevantResults).toHaveLength(0);
     });
 
@@ -188,7 +197,7 @@ describe('TF-IDF', () => {
       const results = searchDocuments('', testIndex);
 
       // Empty query returns no results or all with 0 score
-      const relevantResults = results.filter(r => r.score > 0);
+      const relevantResults = results.filter((r) => r.score > 0);
       expect(relevantResults).toHaveLength(0);
     });
 
@@ -205,10 +214,16 @@ describe('TF-IDF', () => {
 
   describe('calculateCosineSimilarity', () => {
     it('should return 1 for identical vectors', () => {
-      const queryVec = new Map([['a', 0.5], ['b', 0.5]]);
+      const queryVec = new Map([
+        ['a', 0.5],
+        ['b', 0.5],
+      ]);
       const docVec: DocumentVector = {
         uri: 'test',
-        terms: new Map([['a', 0.5], ['b', 0.5]]),
+        terms: new Map([
+          ['a', 0.5],
+          ['b', 0.5],
+        ]),
         rawTerms: new Map(),
         magnitude: Math.sqrt(0.5 * 0.5 + 0.5 * 0.5),
       };
@@ -233,10 +248,16 @@ describe('TF-IDF', () => {
     });
 
     it('should return value between 0 and 1', () => {
-      const queryVec = new Map([['a', 0.5], ['b', 0.3]]);
+      const queryVec = new Map([
+        ['a', 0.5],
+        ['b', 0.3],
+      ]);
       const docVec: DocumentVector = {
         uri: 'test',
-        terms: new Map([['a', 0.3], ['c', 0.4]]),
+        terms: new Map([
+          ['a', 0.3],
+          ['c', 0.4],
+        ]),
         rawTerms: new Map(),
         magnitude: Math.sqrt(0.3 * 0.3 + 0.4 * 0.4),
       };

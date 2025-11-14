@@ -4,7 +4,28 @@
  */
 
 // Re-export main components
-export { CodebaseIndexer, type IndexerOptions, type IndexingStatus, type SearchResult, type FileChangeEvent } from './indexer.js';
-export { buildSearchIndex, searchDocuments, processQuery, calculateCosineSimilarity, type SearchIndex, type DocumentVector } from './tfidf.js';
+export {
+  CodebaseIndexer,
+  type IndexerOptions,
+  type IndexingStatus,
+  type SearchResult,
+  type FileChangeEvent,
+} from './indexer.js';
+export {
+  buildSearchIndex,
+  searchDocuments,
+  processQuery,
+  calculateCosineSimilarity,
+  type SearchIndex,
+  type DocumentVector,
+} from './tfidf.js';
 export { MemoryStorage, type CodebaseFile } from './storage.js';
-export { loadGitignore, scanFiles, isTextFile, detectLanguage, simpleHash, type ScanOptions, type ScanResult } from './utils.js';
+export {
+  loadGitignore,
+  scanFiles,
+  isTextFile,
+  detectLanguage,
+  simpleHash,
+  type ScanOptions,
+  type ScanResult,
+} from './utils.js';

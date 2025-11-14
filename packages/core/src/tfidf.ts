@@ -27,9 +27,25 @@ export interface SearchIndex {
 export function tokenize(text: string): string[] {
   // Common code keywords to boost
   const keywords = new Set([
-    'function', 'const', 'let', 'var', 'class', 'interface', 'type',
-    'async', 'await', 'return', 'import', 'export', 'from',
-    'if', 'else', 'for', 'while', 'switch', 'case',
+    'function',
+    'const',
+    'let',
+    'var',
+    'class',
+    'interface',
+    'type',
+    'async',
+    'await',
+    'return',
+    'import',
+    'export',
+    'from',
+    'if',
+    'else',
+    'for',
+    'while',
+    'switch',
+    'case',
   ]);
 
   const tokens: string[] = [];
@@ -50,15 +66,15 @@ export function tokenize(text: string): string[] {
     }
 
     // Split camelCase into parts
-    const parts = match.split(/(?=[A-Z])/).filter(p => p.length > 1);
+    const parts = match.split(/(?=[A-Z])/).filter((p) => p.length > 1);
     if (parts.length > 1) {
-      tokens.push(...parts.map(p => p.toLowerCase()));
+      tokens.push(...parts.map((p) => p.toLowerCase()));
     }
 
     // Split snake_case into parts
     if (match.includes('_')) {
-      const underscoreParts = match.split('_').filter(p => p.length > 1);
-      tokens.push(...underscoreParts.map(p => p.toLowerCase()));
+      const underscoreParts = match.split('_').filter((p) => p.length > 1);
+      tokens.push(...underscoreParts.map((p) => p.toLowerCase()));
     }
   }
 
@@ -147,9 +163,7 @@ function extractTermFrequencies(content: string): Map<string, number> {
 /**
  * Build TF-IDF search index from documents
  */
-export function buildSearchIndex(
-  documents: Array<{ uri: string; content: string }>
-): SearchIndex {
+export function buildSearchIndex(documents: Array<{ uri: string; content: string }>): SearchIndex {
   // Extract term frequencies for all documents
   const documentTerms = documents.map((doc) => ({
     uri: doc.uri,

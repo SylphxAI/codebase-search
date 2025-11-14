@@ -34,12 +34,33 @@ The search includes:
 
 **Best Practice**: Search the codebase BEFORE writing new code to avoid duplication and follow existing patterns.`,
       inputSchema: {
-        query: z.string().describe('Search query - use natural language, function names, or technical terms'),
-        limit: z.number().default(10).optional().describe('Maximum number of results to return (default: 10)'),
-        include_content: z.boolean().default(true).optional().describe('Include file content snippets in results (default: true)'),
-        file_extensions: z.array(z.string()).optional().describe('Filter by file extensions (e.g., [".ts", ".tsx", ".js"])'),
-        path_filter: z.string().optional().describe('Filter by path pattern (e.g., "src/components", "tests", "docs")'),
-        exclude_paths: z.array(z.string()).optional().describe('Exclude paths containing these patterns (e.g., ["node_modules", ".git", "dist"])'),
+        query: z
+          .string()
+          .describe('Search query - use natural language, function names, or technical terms'),
+        limit: z
+          .number()
+          .default(10)
+          .optional()
+          .describe('Maximum number of results to return (default: 10)'),
+        include_content: z
+          .boolean()
+          .default(true)
+          .optional()
+          .describe('Include file content snippets in results (default: true)'),
+        file_extensions: z
+          .array(z.string())
+          .optional()
+          .describe('Filter by file extensions (e.g., [".ts", ".tsx", ".js"])'),
+        path_filter: z
+          .string()
+          .optional()
+          .describe('Filter by path pattern (e.g., "src/components", "tests", "docs")'),
+        exclude_paths: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Exclude paths containing these patterns (e.g., ["node_modules", ".git", "dist"])'
+          ),
       } as any,
     },
     // @ts-expect-error - MCP SDK type mismatch with handler signature

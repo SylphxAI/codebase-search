@@ -11,9 +11,17 @@
     "dev": "turbo run dev",
     "test": "turbo run test",
     "clean": "turbo run clean",
-    "type-check": "turbo run type-check"
+    "type-check": "turbo run type-check",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "lint:fix": "eslint packages/*/src/**/*.ts --fix",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,json,md}\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,json,md}\""
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
     "turbo": "^2.6.0",
     "typescript": "^5.9.3"
   },

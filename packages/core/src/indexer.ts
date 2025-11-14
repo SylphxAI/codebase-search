@@ -5,7 +5,14 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import type chokidar from 'chokidar';
-import { loadGitignore, scanFiles, simpleHash, isTextFile, detectLanguage, type ScanResult } from './utils.js';
+import {
+  loadGitignore,
+  scanFiles,
+  simpleHash,
+  isTextFile,
+  detectLanguage,
+  type ScanResult,
+} from './utils.js';
 import { MemoryStorage, type CodebaseFile } from './storage.js';
 import { buildSearchIndex, type SearchIndex } from './tfidf.js';
 

@@ -42,8 +42,11 @@ async function main() {
 
   // Parse command line arguments
   const args = process.argv.slice(2);
-  const codebaseRoot = args.find((arg) => arg.startsWith('--root='))?.split('=')[1] || process.cwd();
-  const maxFileSize = parseInt(args.find((arg) => arg.startsWith('--max-size='))?.split('=')[1] || '1048576'); // 1MB default
+  const codebaseRoot =
+    args.find((arg) => arg.startsWith('--root='))?.split('=')[1] || process.cwd();
+  const maxFileSize = parseInt(
+    args.find((arg) => arg.startsWith('--max-size='))?.split('=')[1] || '1048576'
+  ); // 1MB default
   const autoIndex = !args.includes('--no-auto-index');
 
   Logger.info(`📂 Codebase root: ${codebaseRoot}`);
