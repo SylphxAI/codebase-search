@@ -17,17 +17,25 @@ npm install @sylphx/codebase-search
 **Features:**
 - 🔍 TF-IDF based search ranking
 - 📁 .gitignore support
-- 🚀 Fast in-memory indexing
+- 🚀 Fast indexing with SQLite persistence
 - 🎯 Code-aware tokenization
 - 👁️ **File watching with auto-index updates**
-- 💾 Lightweight (minimal dependencies)
+- 💾 **Persistent storage (SQLite + Drizzle ORM)**
+- ⚡ **Instant startup with existing index**
+- 🔄 **Incremental updates on file changes**
 
 **Usage:**
 ```typescript
-import { CodebaseIndexer } from '@sylphx/codebase-search';
+import { CodebaseIndexer, PersistentStorage } from '@sylphx/codebase-search';
+
+// Use persistent storage for faster startup
+const storage = new PersistentStorage({
+  codebaseRoot: '/path/to/project'
+});
 
 const indexer = new CodebaseIndexer({
   codebaseRoot: '/path/to/project',
+  storage, // Optional: uses PersistentStorage by default in MCP
   maxFileSize: 1048576, // 1MB
   onFileChange: (event) => {
     console.log(`File ${event.type}: ${event.path}`);
@@ -35,6 +43,8 @@ const indexer = new CodebaseIndexer({
 });
 
 // Index with watch mode (auto-updates on file changes)
+// On first run: indexes all files
+// On subsequent runs: loads from database instantly!
 await indexer.index({ watch: true });
 
 // Search (always up-to-date!)
@@ -110,24 +120,29 @@ bun run test
 ```
 codebase-search/
 ├── packages/
-│   ├── core/              # Core search library
+│   ├── core/                    # Core search library
 │   │   ├── src/
-│   │   │   ├── index.ts      # Public API exports
-│   │   │   ├── indexer.ts    # Codebase indexing
-│   │   │   ├── tfidf.ts      # TF-IDF implementation
-│   │   │   ├── storage.ts    # In-memory storage
-│   │   │   └── utils.ts      # File scanning utilities
+│   │   │   ├── index.ts            # Public API exports
+│   │   │   ├── indexer.ts          # Codebase indexing + watch
+│   │   │   ├── tfidf.ts            # TF-IDF implementation
+│   │   │   ├── storage.ts          # In-memory storage
+│   │   │   ├── storage-persistent.ts # SQLite storage
+│   │   │   ├── db/
+│   │   │   │   ├── client.ts       # Database client
+│   │   │   │   ├── schema.ts       # Drizzle schema
+│   │   │   │   └── migrations.ts   # Schema migrations
+│   │   │   └── utils.ts            # File scanning utilities
 │   │   └── package.json
 │   │
-│   └── mcp-server/        # MCP server
+│   └── mcp-server/              # MCP server
 │       ├── src/
-│       │   ├── index.ts      # Server entry point
-│       │   └── tool.ts       # MCP tool registration
+│       │   ├── index.ts            # Server entry point
+│       │   └── tool.ts             # MCP tool registration
 │       └── package.json
 │
-├── docs/                  # Documentation
-├── package.json           # Workspace root
-└── turbo.json            # Turbo configuration
+├── docs/                        # Documentation
+├── package.json                 # Workspace root
+└── turbo.json                  # Turbo configuration
 ```
 
 ## 📚 Documentation
@@ -202,9 +217,11 @@ const results = searchDocuments('query', index);
 
 ## 📊 Performance
 
-- **Indexing Speed**: ~1000-2000 files/second
+- **Initial Indexing**: ~1000-2000 files/second
+- **Startup with Existing Index**: <100ms (loads from database)
 - **Search Speed**: <100ms for most queries
 - **Memory Usage**: ~1-2 MB per 1000 files
+- **Storage**: SQLite database in `.codebase-search/index.db`
 
 ## 🔒 Privacy
 
