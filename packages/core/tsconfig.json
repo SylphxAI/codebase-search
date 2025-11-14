@@ -9,6 +9,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "composite": true,
     "strict": false,
     "noImplicitAny": false,
     "esModuleInterop": true,

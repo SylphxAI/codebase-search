@@ -38,7 +38,6 @@ async function main() {
   const server = new McpServer({
     name: SERVER_CONFIG.name,
     version: SERVER_CONFIG.version,
-    description: SERVER_CONFIG.description,
   });
 
   // Parse command line arguments
