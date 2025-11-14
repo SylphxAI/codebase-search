@@ -1,4 +1,4 @@
-# @codebase-search/mcp-server
+# @sylphx/codebase-search-mcp
 
 MCP server for codebase search - Model Context Protocol integration.
 
@@ -7,13 +7,13 @@ MCP server for codebase search - Model Context Protocol integration.
 ### Global Installation (Recommended)
 
 ```bash
-npm install -g @codebase-search/mcp-server
+npm install -g @sylphx/codebase-search-mcp
 ```
 
 ### Local Installation
 
 ```bash
-npm install @codebase-search/mcp-server
+npm install @sylphx/codebase-search-mcp
 ```
 
 ## Configuration

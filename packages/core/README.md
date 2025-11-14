@@ -1,11 +1,11 @@
-# @codebase-search/core
+# @sylphx/codebase-search-core
 
 Core library for intelligent codebase search using TF-IDF.
 
 ## Installation
 
 ```bash
-npm install @codebase-search/core
+npm install @sylphx/codebase-search-core
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ npm install @codebase-search/core
 ### Basic Example
 
 ```typescript
-import { CodebaseIndexer } from '@codebase-search/core';
+import { CodebaseIndexer } from '@sylphx/codebase-search-core';
 
 // Create indexer
 const indexer = new CodebaseIndexer({
@@ -49,7 +49,7 @@ for (const result of results) {
 ### Using Individual Components
 
 ```typescript
-import { buildSearchIndex, searchDocuments } from '@codebase-search/core';
+import { buildSearchIndex, searchDocuments } from '@sylphx/codebase-search-core';
 
 // Prepare documents
 const documents = [
@@ -70,7 +70,7 @@ const results = searchDocuments('authenticate user', index, {
 ### File Scanning
 
 ```typescript
-import { scanFiles, loadGitignore } from '@codebase-search/core';
+import { scanFiles, loadGitignore } from '@sylphx/codebase-search-core';
 
 // Load .gitignore patterns
 const ignoreFilter = loadGitignore('/path/to/project');

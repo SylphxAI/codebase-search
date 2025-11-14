@@ -1,5 +1,5 @@
 {
-  "name": "@codebase-search/core",
+  "name": "@sylphx/codebase-search-core",
   "version": "1.0.0",
   "description": "Core library for intelligent codebase search using TF-IDF",
   "type": "module",

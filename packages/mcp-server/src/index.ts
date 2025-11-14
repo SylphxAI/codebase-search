@@ -6,7 +6,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CodebaseIndexer } from '@codebase-search/core';
+import { CodebaseIndexer } from '@sylphx/codebase-search-core';
 import { registerCodebaseSearchTool } from './tool.js';
 
 // Logger utility (stderr for MCP)
@@ -22,7 +22,7 @@ const Logger = {
 };
 
 const SERVER_CONFIG = {
-  name: '@codebase-search/mcp-server',
+  name: '@sylphx/codebase-search-mcp',
   version: '1.0.0',
   description: 'MCP server providing intelligent codebase search using TF-IDF',
 };

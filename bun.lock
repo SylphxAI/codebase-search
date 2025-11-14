@@ -10,7 +10,7 @@
       },
     },
     "packages/core": {
-      "name": "@codebase-search/core",
+      "name": "@sylphx/codebase-search-core",
       "version": "1.0.0",
       "dependencies": {
         "ignore": "^7.0.5",
@@ -22,14 +22,14 @@
       },
     },
     "packages/mcp-server": {
-      "name": "@codebase-search/mcp-server",
+      "name": "@sylphx/codebase-search-mcp",
       "version": "1.0.0",
       "bin": {
         "codebase-search-mcp": "./dist/index.js",
       },
       "dependencies": {
-        "@codebase-search/core": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.20.2",
+        "@sylphx/codebase-search-core": "workspace:*",
         "zod": "^4.1.12",
       },
       "devDependencies": {
@@ -40,10 +40,6 @@
     },
   },
   "packages": {
-    "@codebase-search/core": ["@codebase-search/core@workspace:packages/core"],
-
-    "@codebase-search/mcp-server": ["@codebase-search/mcp-server@workspace:packages/mcp-server"],
-
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.12", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA=="],
 
     "@esbuild/android-arm": ["@esbuild/android-arm@0.25.12", "", { "os": "android", "cpu": "arm" }, "sha512-VJ+sKvNA/GE7Ccacc9Cha7bpS8nyzVv0jdVgwNDaR4gDMC/2TTRc33Ip8qrNYUcpkOHUT5OZ0bUcNNVZQ9RLlg=="],
@@ -145,6 +141,10 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.53.2", "", { "os": "win32", "cpu": "x64" }, "sha512-k+/Rkcyx//P6fetPoLMb8pBeqJBNGx81uuf7iljX9++yNBVRDQgD04L+SVXmXmh5ZP4/WOp4mWF0kmi06PW2tA=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.0.0", "", {}, "sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA=="],
+
+    "@sylphx/codebase-search-core": ["@sylphx/codebase-search-core@workspace:packages/core"],
+
+    "@sylphx/codebase-search-mcp": ["@sylphx/codebase-search-mcp@workspace:packages/mcp-server"],
 
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
 
